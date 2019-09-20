@@ -1,5 +1,6 @@
 package ru.javawebinar.topjava.util;
 
+import com.sun.tools.internal.xjc.reader.xmlschema.bindinfo.BIConversion;
 import ru.javawebinar.topjava.model.UserMeal;
 import ru.javawebinar.topjava.model.UserMealWithExceed;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class UserMealsUtil {
     public static void main(String[] args) {
@@ -19,26 +21,27 @@ public class UserMealsUtil {
                 new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 13, 0), "Обед", 500),
                 new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 20, 0), "Ужин", 510)
         );
-        getFilteredWithExceeded(mealList, LocalTime.of(7, 0), LocalTime.of(14, 0), 500);
-//        .toLocalDate();
-//        .toLocalTime();
+
+
+        List<UserMealWithExceed> viaArray = getFilteredWithExceeded(mealList, LocalTime.of(7, 0), LocalTime.of(14, 0), 500);
+        List<UserMealWithExceed> viaStream = getFilteredWithExceededViaStream(mealList, LocalTime.of(7, 0), LocalTime.of(14, 0), 500);
+
+        System.out.println(viaArray.equals(viaStream));
     }
 
     public static List<UserMealWithExceed> getFilteredWithExceeded(List<UserMeal> mealList, LocalTime startTime, LocalTime endTime, int caloriesPerDay) {
-        // TODO return filtered list with correctly exceeded field
-        String defaultDescription = "По-умолчанию";
         Map<LocalDate, List<UserMeal>> processedMeals = new HashMap<>();
         Map<LocalDate, Integer> processedCaloriesPerDate = new HashMap<>();
 
         for (UserMeal meal : mealList) {
-            if (meal.getDateTime().toLocalTime().isAfter(startTime) && meal.getDateTime().toLocalTime().isBefore(endTime)) {
-                processedCaloriesPerDate.merge(meal.getDateTime().toLocalDate(), meal.getCalories(), Integer::sum);
-                int caloriesPerDate = processedCaloriesPerDate.getOrDefault(meal.getDateTime().toLocalDate(), 0);
+            if (meal.getTime().isAfter(startTime) && meal.getTime().isBefore(endTime)) {
+                processedCaloriesPerDate.merge(meal.getDate(), meal.getCalories(), Integer::sum);
+                int caloriesPerDate = processedCaloriesPerDate.getOrDefault(meal.getDate(), 0);
 
 
-                List<UserMeal> listMealsWithExceededPerDate = processedMeals.getOrDefault(meal.getDateTime().toLocalDate(), new ArrayList<>());
+                List<UserMeal> listMealsWithExceededPerDate = processedMeals.getOrDefault(meal.getDate(), new ArrayList<>());
                 listMealsWithExceededPerDate.add(meal);
-                processedMeals.put(meal.getDateTime().toLocalDate(), listMealsWithExceededPerDate);
+                processedMeals.put(meal.getDate(), listMealsWithExceededPerDate);
             }
         }
 
@@ -46,9 +49,19 @@ public class UserMealsUtil {
         for (LocalDate mealsGroupKey : processedMeals.keySet()) {
             boolean isExceeded = processedCaloriesPerDate.get(mealsGroupKey) > caloriesPerDay;
             for (UserMeal meal : processedMeals.get(mealsGroupKey)) {
-                resultArray.add(new UserMealWithExceed(meal.getDateTime(), meal.getDescription(), meal.getCalories(), isExceeded));
+                resultArray.add(new UserMealWithExceed(meal, isExceeded));
             }
         }
         return resultArray;
+    }
+
+    public static List<UserMealWithExceed> getFilteredWithExceededViaStream(List<UserMeal> mealList, LocalTime startTime, LocalTime endTime, int caloriesPerDay) {
+            List<UserMeal> filteredMealList = mealList.stream()
+                    .filter(meal -> meal.getTime().isBefore(endTime) && meal.getTime()
+                    .isAfter(startTime)).collect(Collectors.toList());
+            Map<LocalDate, Integer> caloriesPerDare = filteredMealList.stream()
+                    .collect( Collectors.groupingBy(UserMeal::getDate, Collectors.summingInt(UserMeal::getCalories)));
+
+            return filteredMealList.stream().map(meal -> new UserMealWithExceed(meal, caloriesPerDare.get(meal.getDate()) > caloriesPerDay)).collect(Collectors.toList());
     }
 }
