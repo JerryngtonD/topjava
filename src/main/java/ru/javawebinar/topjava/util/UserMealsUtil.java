@@ -36,9 +36,6 @@ public class UserMealsUtil {
         for (UserMeal meal : mealList) {
             if (meal.getTime().isAfter(startTime) && meal.getTime().isBefore(endTime)) {
                 processedCaloriesPerDate.merge(meal.getDate(), meal.getCalories(), Integer::sum);
-                int caloriesPerDate = processedCaloriesPerDate.getOrDefault(meal.getDate(), 0);
-
-
                 List<UserMeal> listMealsWithExceededPerDate = processedMeals.getOrDefault(meal.getDate(), new ArrayList<>());
                 listMealsWithExceededPerDate.add(meal);
                 processedMeals.put(meal.getDate(), listMealsWithExceededPerDate);
